@@ -1,0 +1,62 @@
+;
+; AnotherHypervisorDriver.inf
+;
+
+[Version]
+Signature   = "$WINDOWS NT$"
+Class       = System ; TODO: specify appropriate Class
+ClassGuid   = {4d36e97d-e325-11ce-bfc1-08002be10318} ; TODO: specify appropriate ClassGuid
+Provider    = %ManufacturerName%
+CatalogFile = AnotherHypervisorDriver.cat
+DriverVer   = ; TODO: set DriverVer in stampinf property pages
+PnpLockdown = 1
+
+[DestinationDirs]
+DefaultDestDir = 13
+
+[SourceDisksNames]
+1 = %DiskName%,,,""
+
+[SourceDisksFiles]
+AnotherHypervisorDriver.sys = 1,,
+
+;*****************************************
+; Install Section
+;*****************************************
+
+[Manufacturer]
+%ManufacturerName% = Standard,NT$ARCH$.10.0...16299 ; %13% support introduced in build 16299
+
+[Standard.NT$ARCH$.10.0...16299]
+%AnotherHypervisorDriver.DeviceDesc% = AnotherHypervisorDriver_Device, Root\AnotherHypervisorDriver ; TODO: edit hw-id
+
+[AnotherHypervisorDriver_Device.NT]
+CopyFiles = File_Copy
+
+[File_Copy]
+AnotherHypervisorDriver.sys
+
+;-------------- Service installation
+[AnotherHypervisorDriver_Device.NT.Services]
+AddService = AnotherHypervisorDriver,%SPSVCINST_ASSOCSERVICE%, AnotherHypervisorDriver_Service_Inst
+
+; -------------- AnotherHypervisorDriver driver install sections
+[AnotherHypervisorDriver_Service_Inst]
+DisplayName    = %AnotherHypervisorDriver.SVCDESC%
+ServiceType    = 1               ; SERVICE_KERNEL_DRIVER
+StartType      = 3               ; SERVICE_DEMAND_START
+ErrorControl   = 1               ; SERVICE_ERROR_NORMAL
+ServiceBinary  = %13%\AnotherHypervisorDriver.sys
+
+[AnotherHypervisorDriver_Device.NT.Wdf]
+KmdfService = AnotherHypervisorDriver, AnotherHypervisorDriver_wdfsect
+
+[AnotherHypervisorDriver_wdfsect]
+KmdfLibraryVersion = $KMDFVERSION$
+
+[Strings]
+SPSVCINST_ASSOCSERVICE = 0x00000002
+ManufacturerName = "<Your manufacturer name>" ;TODO: Replace with your manufacturer name
+DiskName = "AnotherHypervisorDriver Installation Disk"
+AnotherHypervisorDriver.DeviceDesc = "AnotherHypervisorDriver Device"
+AnotherHypervisorDriver.SVCDESC = "AnotherHypervisorDriver Service"
