@@ -11,6 +11,12 @@
 #define VMCS_REGION_SIZE 4096
 #define ALIGNMENT_PAGE_SIZE 4096
 
+#define IA32_VMX_BASIC          0x480
+#define IA32_VMX_CR0_FIXED0     0x486
+#define IA32_VMX_CR0_FIXED1     0x487
+#define IA32_VMX_CR4_FIXED0     0x488
+#define IA32_VMX_CR4_FIXED1     0x489
+
 
 ULONGLONG VirtualToPhysicalAddress(PVOID Va)
 {
@@ -88,38 +94,39 @@ BOOLEAN AllocateVmcsRegion(IN VIRTUAL_MACHINE_STATE* VmGuestState)
 }
 
 
+
+
 BOOLEAN AllocateVmxonRegion(IN VIRTUAL_MACHINE_STATE* VmGuestState)
 {
-    DbgPrint("[*] AllocateVmxonRegion: Enter\n");
+	UNREFERENCED_PARAMETER(VmGuestState);
+	DbgPrint("[*] AllocateVmxonRegion: Enter\n");
 	if (KeGetCurrentIrql() > DISPATCH_LEVEL)
 	{
 		DbgPrint("[*] AllocateVmxonRegion: Current IRQL is higher than DISPATCH_LEVEL\n");
 		return FALSE;
 	}
 
-    return TRUE;
 	PHYSICAL_ADDRESS MaxPhysicalAddress = { 0 };
-	MaxPhysicalAddress.QuadPart = MAXULONG64;
+	MaxPhysicalAddress.QuadPart = MAXULONG64 - 1;
+    UNREFERENCED_PARAMETER(MaxPhysicalAddress);
 
-    PVOID Buffer = MmAllocateContiguousMemory(VMXON_REGION_SIZE, MaxPhysicalAddress); // Allocating a 4-KByte Contigous Memory region
 
-    if (Buffer == NULL)
-    {
-        DbgPrint("[*] Error: Couldn't Allocate Buffer for VMXON Region.");
-        return FALSE; 
-    }
-    if (((ULONGLONG) Buffer % ALIGNMENT_PAGE_SIZE) != 0)
+	PVOID Buffer = MmAllocateContiguousMemory(4096, MaxPhysicalAddress); // Allocating a 4-KByte Contigous Memory region
+	if (Buffer == NULL)
+	{
+		DbgPrint("[*] Error: Couldn't Allocate Buffer for VMXON Region.");
+		return FALSE;
+	}
+	if (((ULONGLONG)Buffer % ALIGNMENT_PAGE_SIZE) != 0)
 	{
 		DbgPrint("[*] Error: Allocated buffer is not page aligned.");
-		// MmFreeContiguousMemory(Buffer);
-		return FALSE; 
+		MmFreeContiguousMemory(Buffer);
+		return FALSE;
 	}
-
     UINT64 PhysicalBuffer = VirtualToPhysicalAddress(Buffer);
 
 	UNREFERENCED_PARAMETER(VmGuestState);
     UNREFERENCED_PARAMETER(PhysicalBuffer);
-
 
 
     // Zero-Out memory
@@ -130,6 +137,9 @@ BOOLEAN AllocateVmxonRegion(IN VIRTUAL_MACHINE_STATE* VmGuestState)
     DbgPrint("[*] Virtual allocated buffer for VMXON at %llx", Buffer);
     DbgPrint("[*] Virtual aligned allocated buffer for VMXON at %llx", AlignedVirtualBuffer);
     DbgPrint("[*] Aligned physical buffer allocated for VMXON at %llx", AlignedPhysicalBuffer);
+
+
+    //return TRUE;
 
     // IA32_VMX_BASIC_MSR RevisionId
 	// Write the Revision Identifier to the VMXON region
@@ -154,7 +164,7 @@ BOOLEAN AllocateVmxonRegion(IN VIRTUAL_MACHINE_STATE* VmGuestState)
     }
 
     VmGuestState->VmxonRegion = (UINT64) AlignedPhysicalBuffer;
-
+	DbgPrint("[*] AllocateVmxonRegion: Exit\n");
 	return TRUE;
 
 }

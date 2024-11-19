@@ -188,7 +188,8 @@ NTSTATUS
 CloseHandler(IN PDEVICE_OBJECT DeviceObject, IN PIRP Irp)
 {
 	UNREFERENCED_PARAMETER(DeviceObject);
-	DbgPrint("[*] CloseHandler: Not implemented yet :( !");
+	DbgPrint("[*] CloseHandler");
+	TeardownVmx();
 
 	Irp->IoStatus.Status = STATUS_SUCCESS;
 	Irp->IoStatus.Information = 0;

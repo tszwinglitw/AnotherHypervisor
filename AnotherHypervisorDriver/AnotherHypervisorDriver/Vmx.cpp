@@ -10,6 +10,29 @@
 extern "C" void inline AsmEnableVmxOperation(void);
 
 
+void AdjustControlRegisters(void)
+{
+	//ULONGLONG Ia32VmxCr0Fixed0 = __read/*msr(IA32_VMX_CR0_FIXED0) & 0xFFFFFFFF;
+	//ULONGLONG Ia32VmxCr0Fixed1 = __readmsr(IA32_VMX_CR0_FIXED1) & 0xFFFFFFFF;
+	//ULONGLONG Ia32VmxCr4Fixed0 = __readmsr(IA32_VMX_CR4_FIXED0) & 0xFFFFFFFF;
+	//ULONGLONG Ia32VmxCr4Fixed1 = __readmsr(IA32_VMX_CR4_FIXED1) & 0xFFFFFFFF;
+	//__writecr0((__readcr0() | Ia32VmxCr0Fixed0) & Ia32VmxCr0Fixed1);
+	//__writecr4((__readcr4() | Ia32VmxCr4*/Fixed0) & Ia32VmxCr4Fixed1);
+
+	CR0 cr0;
+	cr0.value = __readcr0() & 0xFFFFFFFF;
+	cr0.bits.PE = 1;
+	cr0.bits.NE = 1;
+	cr0.bits.PG = 1;
+	__writecr0(cr0.value);
+
+	CR4 cr4;
+	cr4.value = __readcr4() & 0xFFFFFFFF;
+	cr4.fields.vmxe = 1;
+	__writecr4(cr4.value);
+}
+
+
 BOOLEAN IsVmxSupported()
 {
 	// Check for VMX support
@@ -21,7 +44,6 @@ BOOLEAN IsVmxSupported()
 
 
 	// BIOS lock check
-	DbgPrint("[*] IsVmxSupported: Checking if Ia32FeatureControlMsr is locked...");
 	Ia32FeatureControlMsr FeatureControlMsr;
 	FeatureControlMsr.all = __readmsr(MSR_IA32_FEATURE_CONTROL);
 	if (FeatureControlMsr.fields.lock == 0)
@@ -45,6 +67,8 @@ BOOLEAN IsVmxSupported()
 
 extern VIRTUAL_MACHINE_STATE* VmGuestState = NULL;
 
+ULONG DesiredProcessorCount = 4;
+
 BOOLEAN InitializeVmx()
 {
 	DbgPrint("[*] InitializeVmx(): Enter");
@@ -54,32 +78,52 @@ BOOLEAN InitializeVmx()
 		return FALSE;
 	}
 
-	ULONG ProcessorCount = KeQueryActiveProcessorCount(0);
-	DbgPrint("[*] InitializeVmx(): Number of Logical Processors: %d", ProcessorCount);
+	ULONG VMProcessorCount = KeQueryActiveProcessorCountEx(ALL_PROCESSOR_GROUPS);
+	DbgPrint("[*] InitializeVmx(): Number of VM CPUs: %d", VMProcessorCount);
 
 	DbgPrint("[*] InitializeVmx(): Allocating Memory for VmGuestState");
-	VmGuestState = (PVIRTUAL_MACHINE_STATE) ExAllocatePool2(POOL_FLAG_NON_PAGED, sizeof(VIRTUAL_MACHINE_STATE) * ProcessorCount, POOLTAG);
+	VmGuestState = (PVIRTUAL_MACHINE_STATE)ExAllocatePool2(POOL_FLAG_NON_PAGED, sizeof(VIRTUAL_MACHINE_STATE) * DesiredProcessorCount, POOLTAG);
 	if (VmGuestState == NULL)
 	{
 		DbgPrint("[*] InitializeVmx(): Failed to allocate memory for VmGuestState");
 		return FALSE;
 	}
 
-	KAFFINITY AffinityMask;
-	for (UINT32 i = 0; i < KeQueryActiveProcessors(); i++)
-	{
-		AffinityMask = (1 << i) & 0xffffffff;
-		KeSetSystemAffinityThread(AffinityMask);
 
+	KAFFINITY AffinityMask;
+	// UINT8 nActiveProcessors = KeQueryActiveProcessors();
+	for (UINT32 i = 0; i < DesiredProcessorCount; i++)
+	{
+		AffinityMask = 0;
+		AffinityMask = (1 << i) & 0xffffffff;
+		KeSetSystemAffinityThreadEx(AffinityMask);
+		ULONG curr = KeGetCurrentProcessorNumber();
 		DbgPrint("=====================================================");
-		DbgPrint("Thread executing in %d th logical processor.", i);
-		DbgPrint("Enabling VMX Operation in %d th logical processor.", i);
-		AsmEnableVmxOperation();
+		DbgPrint("Enabling VMX Operation in %dth VM processor.", curr);
+		AdjustControlRegisters(); // CR0 and CR4
 		AllocateVmxonRegion(&VmGuestState[i]);
 		// AllocateVmcsRegion(&VmGuestState[i]);
-		// DbgPrint("VMXON Region: %llx \t VMCS Region: %llx", VmGuestState[i].VmxonRegion, VmGuestState[i].VmcsRegion);
 		DbgPrint("=====================================================");
 	}
 
+	return TRUE;
+}
+
+
+BOOLEAN TeardownVmx()
+{
+	KAFFINITY AffinityMask;
+	for (UINT32 i = 0; i < DesiredProcessorCount; i++)
+	{
+		AffinityMask = 0;
+		AffinityMask = (1 << i) & 0xffffffff;
+		KeSetSystemAffinityThreadEx(AffinityMask);
+		ULONG curr = KeGetCurrentProcessorNumber();
+		__vmx_off();
+		DbgPrint("Tearing Down VMX Operation in %dth VM processor.", curr);
+		MmFreeContiguousMemory(PhysicalToVirtualAddress(VmGuestState[i].VmxonRegion));
+		// AllocateVmxonRegion(&VmGuestState[i]);
+		// AllocateVmcsRegion(&VmGuestState[i]);
+	}
 	return TRUE;
 }
