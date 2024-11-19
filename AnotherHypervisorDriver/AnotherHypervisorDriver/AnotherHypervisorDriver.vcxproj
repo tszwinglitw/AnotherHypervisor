@@ -113,10 +113,20 @@
     <FilesToPackage Include="$(TargetPath)" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="DebugHelper.cpp" />
+    <ClCompile Include="Memory.cpp" />
     <ClCompile Include="Source.cpp" />
+    <ClCompile Include="Vmx.cpp" />
   </ItemGroup>
   <ItemGroup>
     <MASM Include="SourceAsm.asm" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="DebugHelper.h" />
+    <ClInclude Include="Memory.h" />
+    <ClInclude Include="Msr.h" />
+    <ClInclude Include="Source.h" />
+    <ClInclude Include="Vmx.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
