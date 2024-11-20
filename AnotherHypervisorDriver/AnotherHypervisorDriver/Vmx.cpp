@@ -10,7 +10,7 @@
 extern "C" void inline AsmEnableVmxOperation(void);
 
 
-void AdjustControlRegisters(void)
+void CrEnableVmxOperations(void)
 {
 	//ULONGLONG Ia32VmxCr0Fixed0 = __read/*msr(IA32_VMX_CR0_FIXED0) & 0xFFFFFFFF;
 	//ULONGLONG Ia32VmxCr0Fixed1 = __readmsr(IA32_VMX_CR0_FIXED1) & 0xFFFFFFFF;
@@ -65,7 +65,7 @@ BOOLEAN IsVmxSupported()
 }
 
 
-extern VIRTUAL_MACHINE_STATE* VmGuestState = NULL;
+extern VIRTUAL_MACHINE_STATE* VmCpuState = NULL;
 
 ULONG DesiredProcessorCount = 4;
 
@@ -81,17 +81,15 @@ BOOLEAN InitializeVmx()
 	ULONG VMProcessorCount = KeQueryActiveProcessorCountEx(ALL_PROCESSOR_GROUPS);
 	DbgPrint("[*] InitializeVmx(): Number of VM CPUs: %d", VMProcessorCount);
 
-	DbgPrint("[*] InitializeVmx(): Allocating Memory for VmGuestState");
-	VmGuestState = (PVIRTUAL_MACHINE_STATE)ExAllocatePool2(POOL_FLAG_NON_PAGED, sizeof(VIRTUAL_MACHINE_STATE) * DesiredProcessorCount, POOLTAG);
-	if (VmGuestState == NULL)
+	DbgPrint("[*] InitializeVmx(): Allocating Memory for VmCpuState");
+	VmCpuState = (PVIRTUAL_MACHINE_STATE)ExAllocatePool2(POOL_FLAG_NON_PAGED, sizeof(VIRTUAL_MACHINE_STATE) * DesiredProcessorCount, POOLTAG);
+	if (VmCpuState == NULL)
 	{
-		DbgPrint("[*] InitializeVmx(): Failed to allocate memory for VmGuestState");
+		DbgPrint("[*] InitializeVmx(): Failed to allocate memory for VmCpuState");
 		return FALSE;
 	}
 
-
 	KAFFINITY AffinityMask;
-	// UINT8 nActiveProcessors = KeQueryActiveProcessors();
 	for (UINT32 i = 0; i < DesiredProcessorCount; i++)
 	{
 		AffinityMask = 0;
@@ -100,9 +98,9 @@ BOOLEAN InitializeVmx()
 		ULONG curr = KeGetCurrentProcessorNumber();
 		DbgPrint("=====================================================");
 		DbgPrint("Enabling VMX Operation in %dth VM processor.", curr);
-		AdjustControlRegisters(); // CR0 and CR4
-		AllocateVmxonRegion(&VmGuestState[i]);
-		// AllocateVmcsRegion(&VmGuestState[i]);
+		CrEnableVmxOperations(); // Change bits in CR0 and CR4
+		AllocateVmxonRegion(&VmCpuState[i]);
+		AllocateVmcsRegion(&VmCpuState[i]);
 		DbgPrint("=====================================================");
 	}
 
@@ -121,9 +119,8 @@ BOOLEAN TeardownVmx()
 		ULONG curr = KeGetCurrentProcessorNumber();
 		__vmx_off();
 		DbgPrint("Tearing Down VMX Operation in %dth VM processor.", curr);
-		MmFreeContiguousMemory(PhysicalToVirtualAddress(VmGuestState[i].VmxonRegion));
-		// AllocateVmxonRegion(&VmGuestState[i]);
-		// AllocateVmcsRegion(&VmGuestState[i]);
+		MmFreeContiguousMemory(PhysicalToVirtualAddress(VmCpuState[i].VmxonRegion));
+		MmFreeContiguousMemory(PhysicalToVirtualAddress(VmCpuState[i].VmcsRegion));
 	}
 	return TRUE;
 }

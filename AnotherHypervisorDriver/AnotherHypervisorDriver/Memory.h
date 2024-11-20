@@ -11,3 +11,5 @@ PVOID64 PhysicalToVirtualAddress(LONGLONG Pa);
 BOOLEAN AllocateVmcsRegion(IN VIRTUAL_MACHINE_STATE* GuestState);
 
 BOOLEAN AllocateVmxonRegion(IN VIRTUAL_MACHINE_STATE* VmGuestState);
+
+

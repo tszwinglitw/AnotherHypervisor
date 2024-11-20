@@ -36,6 +36,9 @@
     <ClCompile Include="Vmx.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="ExtendedPageTable.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <MASM Include="SourceAsm.asm">
@@ -56,6 +59,9 @@
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="Msr.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ExtendedPageTable.h">
       <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>

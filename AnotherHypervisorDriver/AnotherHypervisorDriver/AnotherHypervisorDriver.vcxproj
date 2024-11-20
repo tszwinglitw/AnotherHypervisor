@@ -118,6 +118,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="DebugHelper.cpp" />
+    <ClCompile Include="ExtendedPageTable.cpp" />
     <ClCompile Include="Memory.cpp" />
     <ClCompile Include="Source.cpp" />
     <ClCompile Include="Vmx.cpp" />
@@ -127,6 +128,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="DebugHelper.h" />
+    <ClInclude Include="ExtendedPageTable.h" />
     <ClInclude Include="Memory.h" />
     <ClInclude Include="Msr.h" />
     <ClInclude Include="Source.h" />
